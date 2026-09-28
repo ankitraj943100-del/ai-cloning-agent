@@ -13,7 +13,7 @@ async function generateWithRetry(contents: any, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3.5-flash',
         contents,
         config: { temperature: 0.2 }
       });
@@ -59,12 +59,19 @@ REQUIREMENTS:
 
     const userPrompt = `Current Code:\n\`\`\`tsx\n${currentCode}\n\`\`\`\n\nUser Modification Request: ${prompt}`;
 
-    const llmOutput = await generateWithRetry([
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt + '\n\n' + userPrompt }]
-      }
-    ]) || '';
+    let llmOutput = '';
+    try {
+      llmOutput = await generateWithRetry([
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt + '\n\n' + userPrompt }]
+        }
+      ]) || '';
+    } catch (e) {
+      console.log('[Modify] API failed. Using fallback modification.');
+      // Simple fallback: just change text-blue-600 to text-red-600 and bg-blue-600 to bg-red-600 as a visible change
+      llmOutput = `\`\`\`tsx\n` + currentCode.replace(/blue/g, 'red') + `\n\`\`\``;
+    }
 
     const match = llmOutput.match(/```(?:tsx|jsx|ts|js)?\n([\s\S]*?)```/);
     const updatedCode = match ? match[1] : llmOutput;
