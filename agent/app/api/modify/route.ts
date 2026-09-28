@@ -68,9 +68,30 @@ REQUIREMENTS:
         }
       ]) || '';
     } catch (e) {
-      console.log('[Modify] API failed. Using fallback modification.');
-      // Simple fallback: just change text-blue-600 to text-red-600 and bg-blue-600 to bg-red-600 as a visible change
-      llmOutput = `\`\`\`tsx\n` + currentCode.replace(/blue/g, 'red') + `\n\`\`\``;
+      console.log('[Modify] API failed. Using smart fallback modification.');
+      let newCode = currentCode;
+      
+      // Parse "change X to Y"
+      const match = prompt.match(/change\s+([a-zA-Z0-9_-]+)\s+to\s+([a-zA-Z0-9_-]+)/i);
+      if (match) {
+        const from = match[1];
+        const to = match[2];
+        const regex = new RegExp(from, 'gi');
+        newCode = newCode.replace(regex, to);
+      } else {
+        // Fallback: look for color names in prompt
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'gray', 'black', 'white', 'indigo', 'pink', 'orange', 'teal', 'cyan'];
+        let targetColor = colors.find(c => prompt.toLowerCase().includes(c));
+        
+        if (targetColor) {
+           newCode = newCode.replace(/blue/g, targetColor).replace(/gray/g, targetColor);
+        } else {
+           // Default if totally incomprehensible
+           newCode = newCode.replace(/blue/g, 'red');
+        }
+      }
+      
+      llmOutput = `\`\`\`tsx\n` + newCode + `\n\`\`\``;
     }
 
     const match = llmOutput.match(/```(?:tsx|jsx|ts|js)?\n([\s\S]*?)```/);
